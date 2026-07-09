@@ -34,6 +34,7 @@ services:
       - DATABASE_PASSWORD=VehiScan2024!
       - DATABASE_DB=vehiscan_dev
       - PORT=4000
+      - BIND_IP=0.0.0.0
     volumes:
       # Mount the project folder to enable live code reload
       - .:/app
