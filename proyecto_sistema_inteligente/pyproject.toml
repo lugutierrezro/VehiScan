@@ -1,0 +1,44 @@
+[build-system]
+requires = [
+    "setuptools",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+requires-python = ">=3.11"
+name = "proyecto_sistema_inteligente"
+version = "0.1.0"
+readme = "README.md"
+dependencies = [
+    "ipython>=8.10",
+    "jupyterlab>=3.0",
+    "notebook",
+    "kedro~=1.3.1",
+    "ultralytics (>=8.4.53,<9.0.0)",
+    "easyocr (>=1.7.2,<2.0.0)",
+    "opencv-python (>=4.13.0.92,<5.0.0.0)",
+    "pandas (>=3.0.3,<4.0.0)",
+    "kedro-datasets (>=9.3.0,<10.0.0)",
+]
+
+[project.scripts]
+proyecto-sistema-inteligente = "proyecto_sistema_inteligente.__main__:main"
+
+[project.entry-points."kedro.hooks"]
+
+[tool.setuptools.packages.find]
+where = [
+    "src",
+]
+namespaces = false
+
+[tool.kedro]
+package_name = "proyecto_sistema_inteligente"
+project_name = "Proyecto Sistema Inteligente"
+kedro_init_version = "1.3.1"
+tools = "['None']"
+example_pipeline = "False"
+source_dir = "src"
+
+[tool.kedro_telemetry]
+project_id = "1eae321198124e408df93fc65a1bcf35"

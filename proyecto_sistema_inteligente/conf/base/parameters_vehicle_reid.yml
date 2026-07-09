@@ -1,0 +1,2 @@
+# Parámetros del Pipeline de Re-Identificación de Vehículos
+output_reid_path: "data/08_reporting/reid_profiles.csv"

@@ -1,0 +1,5 @@
+# Parámetros del Pipeline de OCR de Placas
+ocr_languages:
+  - "es"
+  - "en"
+output_ocr_path: "data/08_reporting/plate_readings.csv"

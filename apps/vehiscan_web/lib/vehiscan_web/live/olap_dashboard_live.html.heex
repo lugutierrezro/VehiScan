@@ -1,0 +1,215 @@
+<div class="min-h-screen bg-base-300 text-base-content flex flex-col font-sans">
+  <Layouts.navigation_bar current_page={:olap} current_user={@current_user} />
+
+  <div class="flex-1 p-6 space-y-6 overflow-y-auto">
+    <!-- Header -->
+    <div class="flex items-center justify-between pb-2 border-b border-base-content/10">
+      <div>
+        <h1 class="text-3xl font-extrabold font-heading text-base-content tracking-tight">Analítica de Tráfico e Incidentes</h1>
+        <p class="text-sm opacity-70 mt-1 max-w-3xl">Resumen ejecutivo del estado del tráfico metropolitano e incidencias vehiculares. Utilice esta información para la toma de decisiones operativas, despliegue táctico y planeamiento vial estratégico.</p>
+      </div>
+      <div class="badge badge-primary font-bold shadow-md shadow-primary/20 py-3 px-4">
+        <.icon name="hero-bolt" class="w-4 h-4 mr-1" />
+        SISTEMA EN TIEMPO REAL
+      </div>
+    </div>
+
+    <!-- Top KPIs -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-2">
+      <!-- Tarjeta 1: Total -->
+      <div class="card bg-base-100 border border-base-content/5 shadow-xl p-5 hover:shadow-primary/5 transition-all duration-300 relative overflow-hidden group">
+        <div class="absolute -right-6 -top-6 bg-primary/5 w-24 h-24 rounded-full group-hover:scale-150 transition-transform duration-500"></div>
+        <div class="flex items-start justify-between relative z-10">
+          <div>
+            <h3 class="text-[11px] text-base-content/60 font-bold uppercase tracking-wider mb-1">Volumen de Vehículos</h3>
+            <p class="text-3xl font-extrabold font-heading text-primary"><%= @total_readings %></p>
+            <p class="text-[10px] opacity-60 mt-2 font-medium">Lecturas totales almacenadas en el sistema.</p>
+          </div>
+          <div class="p-2.5 bg-primary/10 text-primary rounded-xl">
+            <.icon name="hero-chart-bar" class="w-6 h-6" />
+          </div>
+        </div>
+      </div>
+      
+      <!-- Tarjeta 2: Alta Confianza -->
+      <div class="card bg-base-100 border border-base-content/5 shadow-xl p-5 hover:shadow-success/5 transition-all duration-300 relative overflow-hidden group">
+        <div class="absolute -right-6 -top-6 bg-success/5 w-24 h-24 rounded-full group-hover:scale-150 transition-transform duration-500"></div>
+        <div class="flex items-start justify-between relative z-10">
+          <div>
+            <h3 class="text-[11px] text-base-content/60 font-bold uppercase tracking-wider mb-1">Lecturas Exitosas</h3>
+            <p class="text-3xl font-extrabold font-heading text-success"><%= @high_conf_readings %></p>
+            <p class="text-[10px] opacity-60 mt-2 font-medium">Reconocimiento automático superior al 75% de certeza visual.</p>
+          </div>
+          <div class="p-2.5 bg-success/10 text-success rounded-xl">
+            <.icon name="hero-check-badge" class="w-6 h-6" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Tarjeta 3: Pico de Tráfico -->
+      <div class="card bg-base-100 border border-base-content/5 shadow-xl p-5 hover:shadow-info/5 transition-all duration-300 relative overflow-hidden group">
+        <div class="absolute -right-6 -top-6 bg-info/5 w-24 h-24 rounded-full group-hover:scale-150 transition-transform duration-500"></div>
+        <div class="flex items-start justify-between relative z-10">
+          <div>
+            <h3 class="text-[11px] text-base-content/60 font-bold uppercase tracking-wider mb-1">Día Más Concurrido</h3>
+            <p class="text-3xl font-extrabold font-heading text-info truncate max-w-[150px]"><%= @peak_day %></p>
+            <p class="text-[10px] opacity-60 mt-2 font-medium">Fecha con mayor tráfico histórico.</p>
+          </div>
+          <div class="p-2.5 bg-info/10 text-info rounded-xl">
+            <.icon name="hero-calendar" class="w-6 h-6" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Tarjeta 4: Incidentes -->
+      <div class="card bg-base-100 border border-base-content/5 shadow-xl p-5 hover:shadow-error/5 transition-all duration-300 relative overflow-hidden group">
+        <div class="absolute -right-6 -top-6 bg-error/5 w-24 h-24 rounded-full group-hover:scale-150 transition-transform duration-500"></div>
+        <div class="flex items-start justify-between relative z-10">
+          <div>
+            <h3 class="text-[11px] text-base-content/60 font-bold uppercase tracking-wider mb-1">Total Incidentes</h3>
+            <p class="text-3xl font-extrabold font-heading text-error"><%= @total_alerts %></p>
+            <p class="text-[10px] opacity-60 mt-2 font-medium">Alertas de listas de captura emitidas.</p>
+          </div>
+          <div class="p-2.5 bg-error/10 text-error rounded-xl">
+            <.icon name="hero-exclamation-triangle" class="w-6 h-6" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts Row 1: Distribution -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <!-- Gráfico de Distribución por Color -->
+      <div class="card bg-base-100 border border-base-content/5 shadow-2xl p-6">
+        <div class="flex items-center justify-between pb-4 border-b border-base-content/10 mb-2">
+          <h2 class="text-lg font-bold font-heading flex items-center gap-2">
+            <.icon name="hero-swatch" class="w-5 h-5 text-secondary" />
+            Comportamiento por Color Vehicular
+          </h2>
+          <span class="badge badge-secondary badge-outline text-[10px] font-bold py-1">TOP 5</span>
+        </div>
+        <p class="text-xs text-base-content/60 mb-5 leading-relaxed">
+          Segmentación automática del parque automotor monitoreado, identificando visualmente los 5 colores predominantes en las vías públicas.
+        </p>
+        
+        <div class="space-y-4">
+          <%= for [color, count] <- @color_distribution do %>
+            <% percentage = if @total_readings > 0, do: round((count / @total_readings) * 100), else: 0 %>
+            <div>
+              <div class="flex justify-between mb-1.5">
+                <span class="text-sm font-semibold capitalize opacity-80"><%= color %></span>
+                <span class="text-xs font-bold font-mono opacity-60"><%= percentage %>% (<%= count %> uds)</span>
+              </div>
+              <div class="w-full bg-base-300 rounded-full h-3 overflow-hidden border border-base-content/5 shadow-inner">
+                <div class="bg-secondary h-full rounded-full" style={"width: #{percentage}%"}></div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Gráfico de Distribución por Tipo de Vehículo -->
+      <div class="card bg-base-100 border border-base-content/5 shadow-2xl p-6">
+        <div class="flex items-center justify-between pb-4 border-b border-base-content/10 mb-2">
+          <h2 class="text-lg font-bold font-heading flex items-center gap-2">
+            <.icon name="hero-truck" class="w-5 h-5 text-accent" />
+            Clasificación de Chasis (Tipo)
+          </h2>
+          <span class="badge badge-accent badge-outline text-[10px] font-bold py-1">TOP 5</span>
+        </div>
+        <p class="text-xs text-base-content/60 mb-5 leading-relaxed">
+          Análisis de la distribución de carga y transporte particular, siendo el modelo <strong class="uppercase text-base-content/80"><%= @top_class %></strong> el predominante.
+        </p>
+
+        <div class="space-y-4">
+          <%= for [class, count] <- @class_distribution do %>
+            <% percentage = if @total_readings > 0, do: round((count / @total_readings) * 100), else: 0 %>
+            <div>
+              <div class="flex justify-between mb-1.5">
+                <span class="text-sm font-semibold capitalize opacity-80"><%= class %></span>
+                <span class="text-xs font-bold font-mono opacity-60"><%= percentage %>% (<%= count %> uds)</span>
+              </div>
+              <div class="w-full bg-base-300 rounded-full h-3 overflow-hidden border border-base-content/5 shadow-inner">
+                <div class="bg-accent h-full rounded-full" style={"width: #{percentage}%"}></div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tables Row 2 -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Tabla de Detecciones por Día -->
+      <div class="card bg-base-100 border border-base-content/5 shadow-2xl p-6 flex flex-col h-full">
+        <div class="flex items-center justify-between pb-4 border-b border-base-content/10 mb-4">
+          <h2 class="text-lg font-bold font-heading flex items-center gap-2">
+            <.icon name="hero-calendar-days" class="w-5 h-5 text-info" />
+            Evolución de Tráfico (Histórico Reciente)
+          </h2>
+        </div>
+        
+        <p class="text-xs text-base-content/60 mb-4 flex-none">
+          Muestra el comportamiento temporal de los flujos vehiculares a lo largo de los últimos días, permitiendo detectar tendencias de saturación vial.
+        </p>
+
+        <div class="overflow-x-auto overflow-y-auto flex-1 border border-base-content/10 rounded-xl">
+          <table class="table table-zebra table-sm w-full">
+            <thead class="bg-base-200 sticky top-0 z-10">
+              <tr>
+                <th class="font-bold text-[11px] uppercase tracking-wider">Fecha del Registro</th>
+                <th class="font-bold text-[11px] uppercase tracking-wider text-right">Volumen Detectado</th>
+              </tr>
+            </thead>
+            <tbody>
+              <%= for [date, total] <- @daily_readings do %>
+                <tr class="hover">
+                  <td class="font-mono text-xs opacity-80"><%= date %></td>
+                  <td class="font-bold text-info text-right"><%= total %> <span class="font-normal text-[10px] text-base-content/50">vehículos</span></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Tabla de Alertas por Cámara -->
+      <div class="card bg-base-100 border border-base-content/5 shadow-2xl p-6 flex flex-col h-full">
+        <div class="flex items-center justify-between pb-4 border-b border-base-content/10 mb-4">
+          <h2 class="text-lg font-bold font-heading flex items-center gap-2">
+            <.icon name="hero-map-pin" class="w-5 h-5 text-warning" />
+            Mapa de Calor Operativo
+          </h2>
+        </div>
+
+        <p class="text-xs text-base-content/60 mb-4 flex-none">
+          Identifica las cámaras y avenidas con mayor índice de detecciones positivas correspondientes a órdenes de captura policial o requerimientos por hurto.
+        </p>
+
+        <div class="overflow-x-auto overflow-y-auto flex-1 border border-base-content/10 rounded-xl">
+          <table class="table table-zebra table-sm w-full">
+            <thead class="bg-base-200 sticky top-0 z-10">
+              <tr>
+                <th class="font-bold text-[11px] uppercase tracking-wider">Punto de Control</th>
+                <th class="font-bold text-[11px] uppercase tracking-wider text-right">Incidentes Encontrados</th>
+              </tr>
+            </thead>
+            <tbody>
+              <%= for [location, alerts] <- @camera_alerts do %>
+                <tr class="hover">
+                  <td class="text-xs font-semibold max-w-[200px] truncate" title={location}><%= location %></td>
+                  <td class="text-right">
+                    <span class="badge badge-error badge-sm gap-1 font-bold text-[10px] shadow-sm">
+                      <.icon name="hero-shield-exclamation" class="w-3 h-3" />
+                      <%= alerts %> alertas
+                    </span>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

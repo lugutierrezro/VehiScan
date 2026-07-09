@@ -1,0 +1,7 @@
+# Parámetros del Pipeline de Tracking de Vehículos
+sample_video_url: "https://assets.ultralytics.com/assets/videos/traffic.mp4"
+video_path: "data/01_raw/input_video.mp4"
+model_name: "yolov8n.pt"
+tracker_type: "bytetrack.yaml"
+output_video_path: "data/08_reporting/tracked_traffic.mp4"
+crops_dir: "data/02_intermediate/crops"

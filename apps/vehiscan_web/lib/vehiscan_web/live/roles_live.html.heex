@@ -1,0 +1,133 @@
+<div class="min-h-screen bg-base-300 text-base-content flex flex-col font-sans">
+  <Layouts.navigation_bar current_page={@current_page} current_user={@current_user} />
+
+  <div class="flex-1 p-6 space-y-6 overflow-y-auto max-w-7xl mx-auto w-full">
+    <!-- Header -->
+    <div class="flex items-center justify-between pb-2 border-b border-base-content/10 mb-6">
+      <div>
+        <h1 class="text-3xl font-extrabold font-heading text-base-content tracking-tight">Roles y Permisos Operativos</h1>
+        <p class="text-sm opacity-70 mt-1 max-w-3xl">Define los perfiles de usuario, sus niveles jerárquicos y las vistas a las que tienen acceso restringido.</p>
+      </div>
+      <button phx-click="new-role" class="btn btn-primary shadow-md shadow-primary/20">
+        <.icon name="hero-shield-plus" class="w-5 h-5 mr-1" />
+        Crear Nuevo Rol
+      </button>
+    </div>
+
+    <!-- Lista de Roles -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <%= for role <- @roles do %>
+        <div class="card bg-base-100 border border-base-content/5 shadow-xl p-6 hover:shadow-2xl transition-all relative overflow-hidden group">
+          <div class="absolute top-0 right-0 w-2 h-full bg-primary/20"></div>
+          
+          <div class="flex justify-between items-start mb-4">
+            <div>
+              <h2 class="text-xl font-bold font-heading uppercase tracking-wider"><%= role.name %></h2>
+              <p class="text-sm opacity-70 mt-1"><%= role.description %></p>
+            </div>
+            <div class="radial-progress text-primary text-xs bg-base-300 font-bold" style={"--value:#{role.access_level * 10}; --size:2.5rem; --thickness: 3px;"} title="Nivel de Acceso">
+              <%= role.access_level %>
+            </div>
+          </div>
+          
+          <div class="divider my-2"></div>
+          
+          <div class="mb-4 flex-1">
+            <h3 class="text-xs font-bold uppercase opacity-50 mb-2">Vistas Permitidas:</h3>
+            <div class="flex flex-wrap gap-2">
+              <%= if length(role.permissions) == 0 do %>
+                <span class="text-xs opacity-50 italic">Sin accesos configurados.</span>
+              <% else %>
+                <%= if "*" in role.permissions do %>
+                  <span class="badge badge-success badge-sm font-bold shadow-sm">ACCESO TOTAL (SuperAdmin)</span>
+                <% else %>
+                  <%= for perm <- role.permissions do %>
+                    <span class="badge badge-neutral badge-sm badge-outline"><%= perm %></span>
+                  <% end %>
+                <% end %>
+              <% end %>
+            </div>
+          </div>
+
+          <div class="flex justify-end pt-2 border-t border-base-content/10">
+            <button phx-click="edit-role" phx-value-id={role.id} class="btn btn-sm btn-ghost text-info">
+              <.icon name="hero-pencil-square" class="w-4 h-4 mr-1" />
+              Editar Políticas
+            </button>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Modal Edición/Creación de Rol -->
+  <%= if @show_modal do %>
+    <div class="fixed inset-0 bg-base-300/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+      <div class="bg-base-100 border border-base-content/10 shadow-2xl rounded-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        
+        <div class="bg-primary/10 text-primary px-6 py-4 flex items-center justify-between border-b border-primary/10">
+          <h3 class="font-extrabold text-md font-heading flex items-center gap-2">
+            <.icon name="hero-shield-exclamation" class="w-6 h-6" />
+            <%= if @editing_role.id, do: "Editar Rol Operativo", else: "Registrar Nuevo Rol" %>
+          </h3>
+          <button phx-click="close-modal" class="btn btn-sm btn-ghost btn-circle">
+            <.icon name="hero-x-mark" class="w-5 h-5" />
+          </button>
+        </div>
+
+        <div class="p-6">
+          <%= if @form_error do %>
+            <div class="alert alert-error text-xs p-3 mb-4 rounded-xl">
+              <.icon name="hero-exclamation-triangle" class="w-4 h-4" />
+              <span><%= @form_error %></span>
+            </div>
+          <% end %>
+
+          <form phx-submit="save-role" class="space-y-6">
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="form-control">
+                <label class="label"><span class="label-text font-bold text-xs uppercase">Identificador del Rol</span></label>
+                <input type="text" name="role[name]" value={@editing_role.name} required class="input input-bordered w-full bg-base-200/50 font-mono text-sm" placeholder="ej. analista_jr" />
+              </div>
+              
+              <div class="form-control">
+                <label class="label">
+                  <span class="label-text font-bold text-xs uppercase">Nivel de Jerarquía (0-10)</span>
+                </label>
+                <input type="number" name="role[access_level]" value={@editing_role.access_level || 1} min="0" max="10" required class="input input-bordered w-full bg-base-200/50 font-mono text-sm" />
+              </div>
+            </div>
+
+            <div class="form-control">
+              <label class="label"><span class="label-text font-bold text-xs uppercase">Descripción del Perfil</span></label>
+              <textarea name="role[description]" required class="textarea textarea-bordered h-20 bg-base-200/50 text-sm" placeholder="¿Qué hace este rol?"><%= @editing_role.description %></textarea>
+            </div>
+
+            <div class="divider text-xs font-bold opacity-50 uppercase">Asignación de Vistas / Menús</div>
+
+            <div class="bg-base-200/50 p-4 rounded-xl border border-base-content/10 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <%= for {perm_id, perm_title, perm_desc} <- @available_views do %>
+                <label class="flex gap-3 cursor-pointer p-2 hover:bg-base-100 rounded-lg transition-colors border border-transparent hover:border-base-content/5">
+                  <input type="checkbox" name={"permissions[#{perm_id}]"} class="checkbox checkbox-primary checkbox-sm mt-1" checked={perm_id in @editing_role.permissions or "*" in @editing_role.permissions} />
+                  <div>
+                    <span class="block font-bold text-sm"><%= perm_title %></span>
+                    <span class="block text-xs opacity-60"><%= perm_desc %></span>
+                  </div>
+                </label>
+              <% end %>
+            </div>
+
+            <div class="flex gap-3 justify-end pt-4 border-t border-base-content/10">
+              <button type="button" phx-click="close-modal" class="btn btn-ghost">Cancelar</button>
+              <button type="submit" class="btn btn-primary">
+                <.icon name="hero-check-badge" class="w-5 h-5 mr-1" />
+                Guardar Políticas
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>

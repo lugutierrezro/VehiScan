@@ -1,0 +1,394 @@
+<div class="min-h-screen bg-base-300 text-base-content flex flex-col font-sans">
+  <Layouts.navigation_bar current_page={:reports} current_user={@current_user} />
+
+  <!-- Main Container -->
+  <div class="flex-1 p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start overflow-y-auto">
+
+    <!-- Left Panel: Filters & Action (Cols 3) -->
+    <div class="lg:col-span-3 space-y-6">
+      <!-- Search Filters Card -->
+      <div class="bg-base-100 border border-base-content/5 shadow-xl rounded-2xl p-5 space-y-4">
+        <h3 class="font-extrabold text-md tracking-tight font-heading pb-2 border-b border-base-content/10 flex items-center gap-2">
+          <.icon name="hero-adjustments-horizontal" class="w-5 h-5 text-primary" />
+          Filtros del Reporte
+        </h3>
+
+        <form phx-change="update-filters" phx-submit="update-filters" class="space-y-4">
+          <div class="form-control">
+            <label class="label"><span class="label-text font-bold text-xs">Desde Fecha</span></label>
+            <input
+              type="date"
+              name="from_date"
+              value={@from_date}
+              class="input input-bordered w-full bg-base-200/50 text-sm"
+            />
+          </div>
+
+          <div class="form-control">
+            <label class="label"><span class="label-text font-bold text-xs">Hasta Fecha</span></label>
+            <input
+              type="date"
+              name="to_date"
+              value={@to_date}
+              class="input input-bordered w-full bg-base-200/50 text-sm"
+            />
+          </div>
+
+          <div class="form-control">
+            <label class="label"><span class="label-text font-bold text-xs">Cámara</span></label>
+            <select name="camera_id" class="select select-bordered w-full bg-base-200/50 text-sm">
+              <option value="">Todas las cámaras</option>
+              <%= for cam <- @cameras do %>
+                <option value={cam.id} selected={@selected_camera_id == cam.id}><%= cam.code %> - <%= cam.location_name %></option>
+              <% end %>
+            </select>
+          </div>
+
+          <div class="form-control">
+            <label class="label"><span class="label-text font-bold text-xs">Zona Geográfica</span></label>
+            <select name="zone" class="select select-bordered w-full bg-base-200/50 text-sm">
+              <option value="">Todas las zonas</option>
+              <%= for zone <- @zones do %>
+                <option value={zone} selected={@selected_zone == zone}><%= zone %></option>
+              <% end %>
+            </select>
+          </div>
+        </form>
+      </div>
+
+      <!-- Action Card: Export Report -->
+      <div class="bg-base-100 border border-base-content/5 shadow-xl rounded-2xl p-5 space-y-4">
+        <h3 class="font-extrabold text-md tracking-tight font-heading pb-2 border-b border-base-content/10 flex items-center gap-2">
+          <.icon name="hero-arrow-down-tray" class="w-5 h-5 text-success" />
+          Exportación de Auditoría
+        </h3>
+        <p class="text-xs opacity-75">
+          La exportación genera un archivo inmutable que se asocia a tu usuario y firma un hash SHA-256 para verificación de cadena de custodia digital.
+        </p>
+
+        <div class="space-y-2 pt-2">
+          <button
+            phx-click="generate-report"
+            phx-value-type="csv"
+            class="btn btn-success text-success-content w-full shadow-lg shadow-success/10 flex items-center justify-center gap-2"
+          >
+            <.icon name="hero-document-text" class="w-5 h-5" />
+            Generar Reporte (CSV)
+          </button>
+
+          <button
+            disabled
+            class="btn btn-outline btn-disabled w-full flex items-center justify-center gap-2"
+            title="Próximamente"
+          >
+            <.icon name="hero-document" class="w-5 h-5" />
+            Generar Reporte (PDF)
+            <span class="badge badge-xs badge-neutral">Próximamente</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Panel: KPI Stats & Tabs (Cols 9) -->
+    <div class="lg:col-span-9 space-y-6">
+
+      <!-- KPI Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+        <!-- Stat Card: Total Lecturas -->
+        <div class="card bg-base-100 border border-base-content/5 shadow-xl p-5 flex flex-row items-center gap-4 hover:shadow-primary/5 transition-all duration-300">
+          <div class="p-3 bg-primary/10 text-primary rounded-2xl">
+            <.icon name="hero-calculator" class="w-8 h-8" />
+          </div>
+          <div class="flex-1">
+            <p class="text-xs text-base-content/60 font-semibold uppercase tracking-wider">Lecturas Totales</p>
+            <h3 class="text-3xl font-extrabold font-heading text-primary mt-0.5"><%= @stats.total_count %></h3>
+            <div class="w-full bg-base-300 h-1.5 rounded-full mt-2 overflow-hidden">
+              <div class="bg-primary h-full rounded-full" style="width: 100%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stat Card: Lecturas Exitosas -->
+        <div class="card bg-base-100 border border-base-content/5 shadow-xl p-5 flex flex-row items-center gap-4 hover:shadow-success/5 transition-all duration-300">
+          <div class="p-3 bg-success/10 text-success rounded-2xl">
+            <.icon name="hero-shield-check" class="w-8 h-8" />
+          </div>
+          <div class="flex-1">
+            <p class="text-xs text-base-content/60 font-semibold uppercase tracking-wider">Detecciones Exitosas</p>
+            <h3 class="text-3xl font-extrabold font-heading text-success mt-0.5">
+              <%= @stats.successful_count %>
+              <span class="text-sm font-medium opacity-70 ml-1">(<%= @stats.success_rate %>%)</span>
+            </h3>
+            <div class="w-full bg-base-300 h-1.5 rounded-full mt-2 overflow-hidden">
+              <div class="bg-success h-full rounded-full" style={"width: #{@stats.success_rate}%"}></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stat Card: Lecturas Fallidas -->
+        <div class="card bg-base-100 border border-base-content/5 shadow-xl p-5 flex flex-row items-center gap-4 hover:shadow-error/5 transition-all duration-300">
+          <div class="p-3 bg-error/10 text-error rounded-2xl">
+            <.icon name="hero-exclamation-triangle" class="w-8 h-8" />
+          </div>
+          <div class="flex-1">
+            <p class="text-xs text-base-content/60 font-semibold uppercase tracking-wider">Lecturas Fallidas / Baja Confianza</p>
+            <h3 class="text-3xl font-extrabold font-heading text-error mt-0.5">
+              <%= @stats.failed_count %>
+              <span class="text-sm font-medium opacity-70 ml-1">(<%= @stats.failed_rate %>%)</span>
+            </h3>
+            <div class="w-full bg-base-300 h-1.5 rounded-full mt-2 overflow-hidden">
+              <div class="bg-error h-full rounded-full" style={"width: #{@stats.failed_rate}%"}></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Breakdown Analytics Row -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+        <!-- Classes Breakdown -->
+        <div class="bg-base-100 border border-base-content/5 shadow-xl rounded-2xl p-5 space-y-4">
+          <h3 class="font-extrabold text-sm tracking-tight font-heading pb-2 border-b border-base-content/10 flex items-center gap-2">
+            <.icon name="hero-truck" class="w-5 h-5 text-info" />
+            Distribución por Tipo de Vehículo
+          </h3>
+
+          <div class="space-y-3 pt-2">
+            <%= if @stats.total_count == 0 do %>
+              <p class="text-xs text-base-content/40 text-center py-6">Sin datos disponibles</p>
+            <% else %>
+              <%
+                vehicle_types = [
+                  {"car", "Automóvil / Sedán", "bg-info"},
+                  {"motorcycle", "Motocicleta", "bg-warning"},
+                  {"bus", "Bus / Transporte", "bg-success"},
+                  {"truck", "Camión / Carga", "bg-primary"}
+                ]
+              %>
+              <%= for {class_key, label, color_class} <- vehicle_types do %>
+                <%
+                  count = Map.get(@stats.class_distribution, class_key, 0)
+                  pct = if @stats.total_count > 0, do: Float.round((count / @stats.total_count) * 100, 1), else: 0.0
+                %>
+                <div class="space-y-1">
+                  <div class="flex justify-between text-xs font-semibold">
+                    <span><%= label %></span>
+                    <span><%= count %> (<%= pct %>%)</span>
+                  </div>
+                  <div class="w-full bg-base-300 h-2.5 rounded-full overflow-hidden">
+                    <div class={"h-full rounded-full #{color_class}"} style={"width: #{pct}%"}></div>
+                  </div>
+                </div>
+              <% end %>
+            <% end %>
+          </div>
+        </div>
+
+        <!-- Colors Breakdown -->
+        <div class="bg-base-100 border border-base-content/5 shadow-xl rounded-2xl p-5 space-y-4">
+          <h3 class="font-extrabold text-sm tracking-tight font-heading pb-2 border-b border-base-content/10 flex items-center gap-2">
+            <.icon name="hero-swatch" class="w-5 h-5 text-secondary" />
+            Distribución por Color Dominante
+          </h3>
+
+          <div class="grid grid-cols-2 gap-4 pt-2">
+            <%= if @stats.total_count == 0 do %>
+              <div class="col-span-2 text-xs text-base-content/40 text-center py-6">Sin datos disponibles</div>
+            <% else %>
+              <%
+                # Colores conocidos
+                colors_config = %{
+                  "white" => {"Blanco", "#ffffff", "#000000"},
+                  "black" => {"Negro", "#000000", "#ffffff"},
+                  "gray" => {"Gris", "#808080", "#ffffff"},
+                  "red" => {"Rojo", "#ff0000", "#ffffff"},
+                  "blue" => {"Azul", "#0000ff", "#ffffff"},
+                  "silver" => {"Plata", "#c0c0c0", "#000000"},
+                  "green" => {"Verde", "#008000", "#ffffff"}
+                }
+              %>
+              <%= for {color_key, count} <- Enum.sort_by(@stats.color_distribution, fn {_, c} -> -c end) |> Enum.take(6) do %>
+                <%
+                  {color_label, bg_hex, _text_hex} = Map.get(colors_config, color_key, {color_key |> String.capitalize(), "#808080", "#ffffff"})
+                  pct = if @stats.total_count > 0, do: Float.round((count / @stats.total_count) * 100, 1), else: 0.0
+                %>
+                <div class="flex items-center gap-2.5 bg-base-200 p-2.5 rounded-xl border border-base-content/5">
+                  <div
+                    class="w-6 h-6 rounded-full border border-base-content/20 flex-shrink-0"
+                    style={"background-color: #{bg_hex}"}
+                  ></div>
+                  <div class="min-w-0 flex-1">
+                    <p class="text-xs font-bold truncate leading-tight"><%= color_label %></p>
+                    <p class="text-[10px] opacity-60 leading-none mt-0.5"><%= count %> (<%= pct %>%)</p>
+                  </div>
+                </div>
+              <% end %>
+            <% end %>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Detailed Event Lists Tabs -->
+      <div class="bg-base-100 border border-base-content/5 shadow-2xl rounded-2xl p-5 flex flex-col">
+
+        <!-- Tabs Header -->
+        <div class="flex bg-base-200 p-1 rounded-xl gap-1 border border-base-content/5 self-start mb-4">
+          <button
+            phx-click="set-tab"
+            phx-value-tab="success"
+            class={"btn btn-sm #{if @active_tab == "success", do: "btn-success text-success-content", else: "btn-ghost"}"}
+          >
+            <.icon name="hero-check" class="w-4 h-4 mr-1" />
+            Lecturas Exitosas (<%= @stats.successful_count %>)
+          </button>
+
+          <button
+            phx-click="set-tab"
+            phx-value-tab="failed"
+            class={"btn btn-sm #{if @active_tab == "failed", do: "btn-error text-error-content", else: "btn-ghost"}"}
+          >
+            <.icon name="hero-exclamation-triangle" class="w-4 h-4 mr-1" />
+            Lecturas Fallidas (<%= @stats.failed_count %>)
+          </button>
+        </div>
+
+        <!-- Tab Content -->
+        <%
+          filtered_events =
+            if @active_tab == "success" do
+              Enum.filter(@stats.events, &(&1.confidence >= 75.0))
+            else
+              Enum.filter(@stats.events, &(&1.confidence < 75.0))
+            end
+        %>
+
+        <div class="overflow-x-auto min-h-[300px]">
+          <%= if filtered_events == [] do %>
+            <div class="flex flex-col items-center justify-center text-base-content/40 space-y-2 py-16">
+              <.icon name="hero-document-magnifying-glass" class="w-12 h-12 stroke-1" />
+              <p class="text-xs font-bold">No hay registros en esta categoría</p>
+              <p class="text-[10px] opacity-75">Ajuste los filtros del reporte en el panel izquierdo.</p>
+            </div>
+          <% else %>
+            <table class="table table-zebra w-full text-xs">
+              <thead>
+                <tr class="border-b border-base-content/10">
+                  <th class="font-bold">Recorte</th>
+                  <th class="font-bold">Placa Detectada</th>
+                  <th class="font-bold">Confianza %</th>
+                  <th class="font-bold">Cámara</th>
+                  <th class="font-bold">Zona</th>
+                  <th class="font-bold">Tipo</th>
+                  <th class="font-bold">Color</th>
+                  <th class="font-bold">Fecha y Hora</th>
+                </tr>
+              </thead>
+              <tbody>
+                <%= for event <- filtered_events do %>
+                  <tr class="hover border-b border-base-content/5">
+                    <td>
+                      <%= if crop_url = ALPREvent.get_crop_url(event) do %>
+                        <div class="w-12 h-9 rounded overflow-hidden bg-base-300 border border-base-content/10">
+                          <img src={crop_url} class="w-full h-full object-cover" alt="Crop" />
+                        </div>
+                      <% else %>
+                        <span class="text-[10px] opacity-40">Sin imagen</span>
+                      <% end %>
+                    </td>
+                    <td>
+                      <span class="font-mono text-xs font-black px-2 py-0.5 bg-neutral text-neutral-content rounded tracking-wider">
+                        <%= event.normalized_plate %>
+                      </span>
+                    </td>
+                    <td>
+                      <span class={"badge badge-sm font-bold #{if event.confidence >= 75.0, do: "badge-success", else: "badge-warning"}"}>
+                        <%= event.confidence %>%
+                      </span>
+                    </td>
+                    <td class="font-semibold"><%= event.camera.code %></td>
+                    <td class="opacity-80"><%= event.camera.zone %></td>
+                    <td class="uppercase font-semibold opacity-75"><%= ALPREvent.get_class(event) %></td>
+                    <td class="uppercase font-semibold opacity-75"><%= ALPREvent.get_color(event) %></td>
+                    <td class="font-mono opacity-70"><%= Calendar.strftime(event.inserted_at, "%Y-%m-%d %H:%M:%S") %></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          <% end %>
+        </div>
+
+      </div>
+
+      <!-- History of Generated Reports (Audit Log) -->
+      <div class="bg-base-100 border border-base-content/5 shadow-2xl rounded-2xl p-5 space-y-4">
+        <h3 class="font-extrabold text-sm tracking-tight font-heading pb-2 border-b border-base-content/10 flex items-center gap-2">
+          <.icon name="hero-history" class="w-5 h-5 text-primary" />
+          Historial de Reportes Oficiales y Custodia Digital
+        </h3>
+
+        <div class="overflow-x-auto">
+          <%= if @reports == [] do %>
+            <p class="text-xs text-base-content/40 text-center py-6">No se han generado reportes de auditoría todavía.</p>
+          <% else %>
+            <table class="table table-zebra w-full text-xs">
+              <thead>
+                <tr class="border-b border-base-content/10">
+                  <th class="font-bold">Fecha Generado</th>
+                  <th class="font-bold">Generado Por</th>
+                  <th class="font-bold">Tipo</th>
+                  <th class="font-bold">Filtros Usados</th>
+                  <th class="font-bold">Hash SHA-256 (Custodia Digital)</th>
+                  <th class="font-bold text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                <%= for r <- @reports do %>
+                  <tr class="hover border-b border-base-content/5">
+                    <td class="font-mono opacity-70"><%= Calendar.strftime(r.inserted_at, "%Y-%m-%d %H:%M:%S") %></td>
+                    <td class="font-semibold"><%= r.user.email %></td>
+                    <td>
+                      <span class="badge badge-sm badge-outline uppercase font-bold"><%= r.type %></span>
+                    </td>
+                    <td class="max-w-[200px] truncate" title={inspect(r.filters_used)}>
+                      <span class="text-[10px] opacity-75 font-mono">
+                        Desde: <%= Map.get(r.filters_used, "from_date", "Inicio") %> •
+                        Hasta: <%= Map.get(r.filters_used, "to_date", "Fin") %>
+                      </span>
+                    </td>
+                    <td>
+                      <%= if r.file_hash do %>
+                        <code class="text-[10px] bg-base-200 border border-base-content/10 px-1.5 py-0.5 rounded text-neutral-content font-mono select-all">
+                          <%= r.file_hash %>
+                        </code>
+                      <% else %>
+                        <span class="badge badge-warning badge-xs">procesando...</span>
+                      <% end %>
+                    </td>
+                    <td class="text-right">
+                      <%= if r.status == "completed" and r.file_url do %>
+                        <a
+                          href={r.file_url}
+                          download
+                          class="btn btn-xs btn-primary inline-flex items-center gap-1"
+                        >
+                          <.icon name="hero-arrow-down-tray" class="w-3.5 h-3.5" />
+                          Descargar
+                        </a>
+                      <% else %>
+                        <button disabled class="btn btn-xs btn-ghost btn-disabled">No disponible</button>
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          <% end %>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>

@@ -1,0 +1,253 @@
+<div class="min-h-screen bg-base-300 text-base-content flex flex-col font-sans">
+  <!-- Shared Navbar -->
+  <Layouts.navigation_bar current_page={:config} current_user={@current_user} />
+
+  <!-- Content Container -->
+  <div class="flex-1 p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start overflow-y-auto">
+    
+    <!-- Left panel: Path Config & Cameras List (Cols 5) -->
+    <div class="lg:col-span-5 space-y-6">
+      
+      <!-- Python project path config card -->
+      <div class="card bg-base-100 border border-base-content/5 shadow-xl p-5 space-y-4">
+        <h3 class="font-extrabold text-md tracking-tight font-heading pb-2 border-b border-base-content/10 flex items-center gap-2">
+          <.icon name="hero-cog" class="w-5 h-5 text-primary" />
+          Ruta del Motor de Visión (Python)
+        </h3>
+
+        <form phx-submit="save-python-path" class="space-y-3">
+          <div class="form-control">
+            <label class="label"><span class="label-text font-bold text-xs opacity-70">Ubicación del Proyecto ProyectoSistemaInteligente</span></label>
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-base-content/40">
+                <.icon name="hero-folder-open" class="w-5 h-5" />
+              </div>
+              <input 
+                type="text" 
+                name="path" 
+                value={@python_path}
+                placeholder="D:\ProyectoSistemaInteligente"
+                class="input input-bordered w-full pl-10 bg-base-200/50 text-xs font-mono"
+                required
+              />
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-sm w-full">
+            <.icon name="hero-check" class="w-4 h-4 mr-0.5" />
+            Guardar Configuración
+          </button>
+        </form>
+      </div>
+
+      <!-- Configured Cameras List -->
+      <div class="card bg-base-100 border border-base-content/5 shadow-xl p-5 space-y-4">
+        <h3 class="font-extrabold text-md tracking-tight font-heading pb-2 border-b border-base-content/10 flex items-center gap-2">
+          <.icon name="hero-list-bullet" class="w-5 h-5 text-primary" />
+          Cámaras en el Sistema
+        </h3>
+
+        <div class="overflow-x-auto">
+          <table class="table table-xs w-full">
+            <thead>
+              <tr class="border-b border-base-content/5">
+                <th>Código</th>
+                <th>Ubicación</th>
+                <th>Zona</th>
+                <th class="text-right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              <%= if @cameras == [] do %>
+                <tr>
+                  <td colspan="4" class="text-center py-4 opacity-50">Sin dispositivos registrados</td>
+                </tr>
+              <% else %>
+                <%= for cam <- @cameras do %>
+                  <tr class={"hover #{if @selected_camera && @selected_camera.id == cam.id, do: "bg-primary/10", else: ""}"}>
+                    <td>
+                      <span class="font-mono font-bold"><%= cam.code %></span>
+                    </td>
+                    <td class="max-w-[120px] truncate"><%= cam.location_name %></td>
+                    <td><%= cam.zone %></td>
+                    <td class="text-right space-x-1">
+                      <button 
+                        phx-click="select-camera" 
+                        phx-value-id={cam.id}
+                        class="btn btn-ghost btn-xs text-primary"
+                        title="Editar"
+                      >
+                        <.icon name="hero-pencil" class="w-3.5 h-3.5" />
+                      </button>
+                      <button 
+                        phx-click="delete-camera" 
+                        phx-value-id={cam.id}
+                        data-confirm="¿Está seguro de eliminar esta cámara? Esta acción no se puede deshacer."
+                        class="btn btn-ghost btn-xs text-error"
+                        title="Eliminar"
+                      >
+                        <.icon name="hero-trash" class="w-3.5 h-3.5" />
+                      </button>
+                    </td>
+                  </tr>
+                <% end %>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right panel: Camera form (Cols 7) -->
+    <div class="lg:col-span-7">
+      
+      <!-- Camera editing/creation card -->
+      <div class="card bg-base-100 border border-base-content/5 shadow-2xl p-6 space-y-5">
+        <div class="flex items-center justify-between pb-3 border-b border-base-content/10">
+          <h3 class="font-extrabold text-md tracking-tight font-heading flex items-center gap-2">
+            <.icon name="hero-plus-circle" class="w-5 h-5 text-primary" />
+            <%= if @selected_camera, do: "Editar Cámara: #{@selected_camera.code}", else: "Vincular Nueva Cámara" %>
+          </h3>
+          <%= if @selected_camera do %>
+            <button phx-click="reset-form" class="btn btn-xs btn-ghost text-error">
+              <.icon name="hero-arrow-path" class="w-3 h-3 mr-0.5" />
+              Modo Creación
+            </button>
+          <% end %>
+        </div>
+
+        <.form :let={f} for={@camera_changeset} phx-change="validate-camera" phx-submit="save-camera" class="space-y-4">
+          <%
+            current_source_type = Ecto.Changeset.get_field(@camera_changeset, :source_type) || "video"
+
+            {source_label, source_placeholder, source_help} = 
+              case current_source_type do
+                "directory" -> 
+                  {"Ruta del Directorio de Imágenes", "Ej. D:\\capturas_camara_001\\", "Coloque la ruta absoluta de la carpeta local que contiene las imágenes (.jpg, .jpeg, .png, .bmp, .webp) para procesar como secuencia."}
+                "youtube" -> 
+                  {"Enlace / URL de YouTube", "Ej. https://www.youtube.com/watch?v=A2qlHVeObT0", "Coloque la URL del video o transmisión en vivo de YouTube. El pipeline usará yt-dlp para resolver la transmisión."}
+                "live_stream" -> 
+                  {"URL de Transmisión (RTSP/M3U8)", "Ej. rtsp://admin:password@192.168.1.100:554/live", "Coloque la dirección de red RTSP, M3U8 o similar de la cámara de red compatible."}
+                "webcam" -> 
+                  {"Ruta o Índice de Cámara Nativa", "Ej. 0 o /dev/video0", "Coloque el índice de la cámara (0 para webcam integrada) o la ruta de dispositivo en Linux (Ej. /dev/video0)."}
+                _ -> 
+                  {"Origen de Captura / Video de Entrada", "Ej. D:\\ProyectoSistemaInteligente\\data\\01_raw\\input_video.mp4", "Coloque la ruta absoluta local o URL directa al archivo de video (.mp4) a procesar."}
+              end
+          %>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            
+            <div class="form-control">
+              <label class="label"><span class="label-text font-bold text-xs">Código de Cámara</span></label>
+              <.input field={f[:code]} type="text" placeholder="Ej. CAM-005" class="input input-bordered w-full bg-base-200/50 uppercase" required />
+            </div>
+
+            <div class="form-control">
+              <label class="label"><span class="label-text font-bold text-xs">Tipo de Dispositivo</span></label>
+              <.input field={f[:type]} type="select" options={[{"Fija (Lente fijo)", "fixed"}, {"Móvil (Patrulla)", "mobile"}, {"Domo PTZ", "ptz"}]} class="select select-bordered w-full bg-base-200/50" />
+            </div>
+
+            <div class="form-control sm:col-span-2">
+              <label class="label"><span class="label-text font-bold text-xs">Ubicación física / Dirección</span></label>
+              <.input id="camera-location-input" field={f[:location_name]} type="text" placeholder="Ej. Av. Arequipa cdra. 12 con Cl. Risso" class="input input-bordered w-full bg-base-200/50" required />
+            </div>
+
+            <div class="form-control">
+              <label class="label"><span class="label-text font-bold text-xs">Latitud (Coordenada)</span></label>
+              <.input id="camera-lat-input" field={f[:latitude]} type="number" step="any" placeholder="Ej. -12.0865" class="input input-bordered w-full bg-base-200/50" />
+            </div>
+
+            <div class="form-control">
+              <label class="label"><span class="label-text font-bold text-xs">Longitud (Coordenada)</span></label>
+              <.input id="camera-lng-input" field={f[:longitude]} type="number" step="any" placeholder="Ej. -77.0042" class="input input-bordered w-full bg-base-200/50" />
+            </div>
+
+            <div class="form-control sm:col-span-2 space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold opacity-75">Ubicación Geográfica en el Mapa</span>
+                <button type="button" id="use-my-location-btn" class="btn btn-xs btn-outline btn-primary flex items-center gap-1">
+                  <svg class="w-3.5 h-3.5 mr-0.5 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                  Usar mi ubicación actual
+                </button>
+              </div>
+              <div id="camera-config-map-container" phx-update="ignore" phx-hook="CameraConfigMap" class="w-full h-[220px] rounded-lg border border-base-content/15 shadow-inner bg-base-200/30"></div>
+              <span class="text-[10px] opacity-50 block mt-1">Haz clic en el mapa o arrastra el marcador para definir la latitud y longitud.</span>
+            </div>
+
+            <div class="form-control">
+              <label class="label"><span class="label-text font-bold text-xs">Zona Operativa</span></label>
+              <.input field={f[:zone]} type="text" placeholder="Ej. Lince" class="input input-bordered w-full bg-base-200/50" />
+            </div>
+
+            <div class="form-control">
+              <label class="label"><span class="label-text font-bold text-xs">Orientación del lente</span></label>
+              <.input field={f[:orientation]} type="text" placeholder="Ej. N (Norte), S (Sur)" class="input input-bordered w-full bg-base-200/50" />
+            </div>
+
+            <div class="form-control">
+              <label class="label"><span class="label-text font-bold text-xs">Estado Operativo</span></label>
+              <.input field={f[:status]} type="select" options={[{"Activo (Captando)", "active"}, {"Inactivo", "inactive"}, {"Mantenimiento", "maintenance"}, {"Falla de Red", "error"}]} class="select select-bordered w-full bg-base-200/50" />
+            </div>
+
+            <div class="form-control">
+              <label class="label"><span class="label-text font-bold text-xs">Tipo de Fuente de Origen</span></label>
+              <.input field={f[:source_type]} type="select" options={[{"Archivo/URL de Video", "video"}, {"Directorio de Imágenes", "directory"}, {"Transmisión de YouTube", "youtube"}, {"Flujo en Vivo RTSP/M3U8", "live_stream"}, {"Cámara Nativa (Webcam)", "webcam"}]} class="select select-bordered w-full bg-base-200/50" />
+            </div>
+
+            <div class="form-control sm:col-span-2">
+              <label class="label">
+                <span class="label-text font-bold text-xs"><%= source_label %></span>
+              </label>
+              <%= if current_source_type == "webcam" do %>
+                <div class="relative" phx-hook="WebcamDetector" id="webcam-selector-wrapper">
+                  <%= if @detected_webcams && @detected_webcams != [] do %>
+                    <.input 
+                      field={f[:stream_url]} 
+                      type="select" 
+                      options={Enum.map(@detected_webcams, &{&1["label"], &1["index"]})} 
+                      class="select select-bordered w-full bg-base-200/50 text-xs" 
+                    />
+                  <% else %>
+                    <div class="flex items-center gap-2">
+                      <.input 
+                        field={f[:stream_url]} 
+                        type="text" 
+                        placeholder="Detectando cámaras del equipo..." 
+                        class="input input-bordered w-full bg-base-200/50 font-mono text-xs" 
+                        disabled
+                      />
+                      <span class="loading loading-spinner loading-xs text-primary"></span>
+                    </div>
+                  <% end %>
+                </div>
+              <% else %>
+                <.input 
+                  field={f[:stream_url]} 
+                  type="text" 
+                  placeholder={source_placeholder} 
+                  class="input input-bordered w-full bg-base-200/50 font-mono text-xs" 
+                />
+              <% end %>
+              <span class="text-[10px] opacity-50 block mt-1"><%= source_help %></span>
+            </div>
+
+          </div>
+
+          <div class="pt-4 border-t border-base-content/10 flex justify-end gap-3">
+            <%= if @selected_camera do %>
+              <button type="button" phx-click="reset-form" class="btn btn-ghost btn-sm">
+                Cancelar
+              </button>
+            <% end %>
+            <button type="submit" class="btn btn-primary btn-sm px-6">
+              <.icon name="hero-check" class="w-4 h-4 mr-0.5" />
+              Guardar Dispositivo
+            </button>
+          </div>
+        </.form>
+      </div>
+
+    </div>
+
+  </div>
+</div>

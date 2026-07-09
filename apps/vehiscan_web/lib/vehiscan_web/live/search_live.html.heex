@@ -1,0 +1,374 @@
+<div class="min-h-screen bg-base-300 text-base-content flex flex-col font-sans">
+  
+  <Layouts.navigation_bar current_page={:search} current_user={@current_user} />
+
+  <!-- Content Area -->
+  <div class="flex-1 p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start overflow-y-auto">
+    
+    <!-- Left panel: Search Criteria form (Cols 3) -->
+    <div class="lg:col-span-3 bg-base-100 border border-base-content/5 shadow-xl rounded-2xl p-5 space-y-4">
+      <h3 class="font-extrabold text-md tracking-tight font-heading pb-2 border-b border-base-content/10 flex items-center gap-2">
+        <.icon name="hero-adjustments-horizontal" class="w-5 h-5 text-primary" />
+        Criterios de Búsqueda
+      </h3>
+      
+      <form phx-submit="submit-search" class="space-y-4">
+        <div class="form-control">
+          <label class="label"><span class="label-text font-bold text-xs">Patrón de Placa</span></label>
+          <input 
+            type="text" 
+            name="plate" 
+            value={@plate_query}
+            placeholder="Ej. ABC123 o ABC%" 
+            class="input input-bordered w-full bg-base-200/50 uppercase tracking-widest text-sm" 
+          />
+        </div>
+
+        <div class="form-control">
+          <label class="label"><span class="label-text font-bold text-xs">Cámara de Captura</span></label>
+          <select name="camera_id" class="select select-bordered w-full bg-base-200/50 text-sm">
+            <option value="">Todas las cámaras</option>
+            <%= for cam <- @cameras do %>
+              <option value={cam.id} selected={@selected_camera_id == cam.id}><%= cam.code %> - <%= cam.location_name %></option>
+            <% end %>
+          </select>
+        </div>
+
+        <div class="form-control">
+          <label class="label"><span class="label-text font-bold text-xs">Zona Geográfica</span></label>
+          <select name="zone" class="select select-bordered w-full bg-base-200/50 text-sm">
+            <option value="">Todas las zonas</option>
+            <%= for zone <- @zones do %>
+              <option value={zone} selected={@selected_zone == zone}><%= zone %></option>
+            <% end %>
+          </select>
+        </div>
+
+        <div class="form-control">
+          <label class="label"><span class="label-text font-bold text-xs">Desde Fecha</span></label>
+          <input 
+            type="date" 
+            name="from_date" 
+            value={@from_date}
+            class="input input-bordered w-full bg-base-200/50 text-sm" 
+          />
+        </div>
+
+        <div class="form-control">
+          <label class="label"><span class="label-text font-bold text-xs">Hasta Fecha</span></label>
+          <input 
+            type="date" 
+            name="to_date" 
+            value={@to_date}
+            class="input input-bordered w-full bg-base-200/50 text-sm" 
+          />
+        </div>
+
+        <button type="submit" class="btn btn-primary w-full shadow-lg shadow-primary/10 mt-2">
+          <.icon name="hero-magnifying-glass" class="w-5 h-5 mr-1" />
+          Ejecutar Consulta
+        </button>
+      </form>
+    </div>
+
+    <!-- Right panel: Results and View Tabs (Cols 9) -->
+    <div class="lg:col-span-9 space-y-6">
+      
+      <!-- Tabs header & Route Replay indicator -->
+      <div class="bg-base-100 border border-base-content/5 shadow-md rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        
+        <!-- View tabs switch -->
+        <div class="flex bg-base-200 p-1 rounded-lg gap-1 border border-base-content/5">
+          <button 
+            phx-click="set-tab" 
+            phx-value-tab="table" 
+            class={"btn btn-sm #{if @active_tab == "table", do: "btn-primary", else: "btn-ghost"}"}
+          >
+            <.icon name="hero-table-cells" class="w-4 h-4 mr-1" />
+            Tabla
+          </button>
+          
+          <button 
+            phx-click="set-tab" 
+            phx-value-tab="timeline" 
+            class={"btn btn-sm #{if @active_tab == "timeline", do: "btn-primary", else: "btn-ghost"}"}
+          >
+            <.icon name="hero-list-bullet" class="w-4 h-4 mr-1" />
+            Línea de Tiempo
+          </button>
+          
+          <button 
+            phx-click="set-tab" 
+            phx-value-tab="map" 
+            class={"btn btn-sm #{if @active_tab == "map", do: "btn-primary", else: "btn-ghost"}"}
+          >
+            <.icon name="hero-map" class="w-4 h-4 mr-1" />
+            Mapa
+          </button>
+        </div>
+
+        <!-- Route replay controls -->
+        <%= if @reconstructed_plate do %>
+          <div class="flex items-center gap-3 bg-secondary/10 px-4 py-2 rounded-lg border border-secondary/20">
+            <div class="flex items-center gap-2">
+              <span class="inline-block w-2.5 h-2.5 rounded-full bg-secondary animate-ping"></span>
+              <p class="text-xs font-bold text-secondary font-heading uppercase">Ruta de: <%= @reconstructed_plate %></p>
+            </div>
+            
+            <%= if @current_replay_index do %>
+              <div class="badge badge-secondary badge-sm font-semibold">
+                Paso <%= @current_replay_index + 1 %> / <%= length(@route_events) %>
+              </div>
+            <% else %>
+              <div class="badge badge-success badge-sm font-semibold">Completo</div>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+
+      <!-- Results view wrapper -->
+      <div class="bg-base-100 border border-base-content/5 shadow-2xl rounded-2xl p-5 min-h-[500px] flex flex-col">
+        
+        <%= if @results == [] do %>
+          <!-- Empty State -->
+          <div class="flex-1 flex flex-col items-center justify-center text-base-content/40 space-y-3 py-20">
+            <.icon name="hero-magnifying-glass-micro" class="w-16 h-16 stroke-1 text-base-content/30" />
+            <div class="text-center max-w-sm space-y-1">
+              <p class="font-bold text-sm">Sin resultados de búsqueda</p>
+              <p class="text-xs opacity-75">Ingrese los criterios en el panel lateral. Recuerde que todas las consultas quedan registradas bajo auditoría confidencial.</p>
+            </div>
+          </div>
+        <% else %>
+          
+          <!-- TAB 1: TABLE VIEW -->
+          <%= if @active_tab == "table" do %>
+            <div class="overflow-x-auto">
+              <table class="table table-zebra w-full text-xs">
+                <thead>
+                  <tr class="border-b border-base-content/10">
+                    <th class="font-bold text-base-content/70">Recorte</th>
+                    <th class="font-bold text-base-content/70">Placa</th>
+                    <th class="font-bold text-base-content/70">Atributos</th>
+                    <th class="font-bold text-base-content/70">Confianza</th>
+                    <th class="font-bold text-base-content/70">Cámara</th>
+                    <th class="font-bold text-base-content/70">Ubicación</th>
+                    <th class="font-bold text-base-content/70">Fecha y Hora</th>
+                    <th class="font-bold text-base-content/70 text-right">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <%= for event <- @results do %>
+                    <tr class="hover border-b border-base-content/5">
+                      <td>
+                        <%= if crop_url = ALPREvent.get_crop_url(event) do %>
+                          <div class="w-12 h-9 rounded overflow-hidden bg-base-300 border border-base-content/10">
+                            <img src={crop_url} class="w-full h-full object-cover" alt="Crop" />
+                          </div>
+                        <% else %>
+                          <span class="text-[10px] opacity-40 font-semibold">Sin imagen</span>
+                        <% end %>
+                      </td>
+                      <td>
+                        <span class="font-mono text-sm font-black px-2 py-0.5 bg-neutral text-neutral-content rounded-md tracking-wider"><%= event.normalized_plate %></span>
+                      </td>
+                      <td>
+                        <%
+                          class = ALPREvent.get_class(event)
+                          color = ALPREvent.get_color(event)
+                        %>
+                        <div class="flex gap-1 flex-wrap">
+                          <%= if class != "unknown" do %>
+                            <span class="badge badge-xs badge-neutral uppercase"><%= class %></span>
+                          <% end %>
+                          <%= if color != "unknown" do %>
+                            <span class="badge badge-xs badge-neutral uppercase"><%= color %></span>
+                          <% end %>
+                        </div>
+                      </td>
+                      <td>
+                        <span class={"badge badge-sm font-bold #{if event.confidence >= 75.0, do: "badge-success", else: "badge-warning"}"}>
+                          <%= event.confidence %>%
+                        </span>
+                        <%= if event.confidence < 75.0 do %>
+                          <div class="tooltip tooltip-right" data-tip="Confianza de lectura inferior al umbral recomendado (75%). Verifique manualmente.">
+                            <.icon name="hero-exclamation-triangle" class="w-4 h-4 text-warning ml-1 inline align-middle" />
+                          </div>
+                        <% end %>
+                      </td>
+                      <td class="font-semibold"><%= event.camera.code %></td>
+                      <td class="opacity-80"><%= event.camera.location_name %></td>
+                      <td class="font-mono opacity-70"><%= Calendar.strftime(event.inserted_at, "%Y-%m-%d %H:%M:%S") %></td>
+                      <td class="text-right">
+                        <button 
+                          phx-click="reconstruct-route" 
+                          phx-value-plate={event.normalized_plate}
+                          class="btn btn-xs btn-outline btn-secondary"
+                        >
+                          <.icon name="hero-map" class="w-3.5 h-3.5 mr-0.5" />
+                          Ver Ruta
+                        </button>
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          <% end %>
+
+          <!-- TAB 2: TIMELINE VIEW -->
+          <%= if @active_tab == "timeline" do %>
+            <div class="relative pl-6 border-l-2 border-primary/20 space-y-6 py-4 mx-3">
+              <%= for {event, idx} <- Enum.with_index(@results) do %>
+                <div class="relative group">
+                  <!-- Timeline dot -->
+                  <div class="absolute -left-[31px] top-1.5 flex items-center justify-center w-4 h-4 rounded-full border-2 border-primary bg-base-100 group-hover:scale-125 transition-transform duration-200">
+                    <div class="w-1.5 h-1.5 rounded-full bg-primary"></div>
+                  </div>
+
+                  <div class="p-4 bg-base-200 border border-base-content/5 rounded-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm hover:shadow-md transition-all duration-200">
+                    <div class="flex items-start md:items-center gap-4">
+                      <%= if crop_url = ALPREvent.get_crop_url(event) do %>
+                        <div class="w-16 h-12 rounded-lg overflow-hidden bg-base-300 border border-base-content/10 flex-shrink-0 relative group">
+                          <img src={crop_url} class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-125" alt="Crop" />
+                        </div>
+                      <% else %>
+                        <div class="w-16 h-12 rounded-lg bg-base-300 border border-dashed border-base-content/20 flex items-center justify-center flex-shrink-0 text-[10px] opacity-50 text-center leading-3 font-semibold">
+                          Sin<br/>Imagen
+                        </div>
+                      <% end %>
+
+                      <div class="space-y-1">
+                        <div class="flex items-center gap-3 flex-wrap">
+                          <span class="font-mono text-sm font-black px-2 py-0.5 bg-neutral text-neutral-content rounded-md tracking-wider"><%= event.normalized_plate %></span>
+                          <span class="text-xs font-semibold opacity-60">Paso #<%= length(@results) - idx %></span>
+                          
+                          <%
+                            class = ALPREvent.get_class(event)
+                            color = ALPREvent.get_color(event)
+                          %>
+                          <%= if class != "unknown" do %>
+                            <span class="badge badge-xs badge-neutral uppercase"><%= class %></span>
+                          <% end %>
+                          <%= if color != "unknown" do %>
+                            <span class="badge badge-xs badge-neutral uppercase"><%= color %></span>
+                          <% end %>
+                        </div>
+                        <div class="text-xs opacity-80 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 pt-1.5">
+                          <p class="flex items-center gap-1"><strong>Cámara:</strong> <%= event.camera.code %> (<%= event.camera.zone %>)</p>
+                          <p class="flex items-center gap-1"><strong>Ubicación:</strong> <%= event.camera.location_name %></p>
+                          <p class="flex items-center gap-1"><strong>Coordenadas:</strong> <%= event.camera.latitude %>, <%= event.camera.longitude %></p>
+                          <p class="flex items-center gap-1"><strong>Fecha:</strong> <%= Calendar.strftime(event.inserted_at, "%Y-%m-%d %H:%M:%S") %></p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div class="flex-none">
+                      <button 
+                        phx-click="reconstruct-route" 
+                        phx-value-plate={event.normalized_plate}
+                        class="btn btn-sm btn-outline btn-secondary w-full md:w-auto"
+                      >
+                        <.icon name="hero-map" class="w-4 h-4 mr-1" />
+                        Reconstruir Ruta
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+
+          <!-- TAB 3: MAP VIEW -->
+          <%= if @active_tab == "map" do %>
+            <div class="flex-1 min-h-[480px] rounded-xl overflow-hidden border border-base-content/10 relative">
+              <div 
+                id="search-map" 
+                phx-update="ignore" 
+                phx-hook="LeafletMap"
+                data-lat="-12.0865"
+                data-lng="-77.0042"
+                data-zoom="12"
+                data-cameras="[]"
+                class="absolute inset-0 z-0 h-full w-full"
+              ></div>
+            </div>
+          <% end %>
+
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- Justification Request Modal -->
+  <%= if @show_justification_modal do %>
+    <div class="fixed inset-0 bg-base-300/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+      <div class="bg-base-100 border border-base-content/10 shadow-2xl rounded-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        
+        <!-- Header -->
+        <div class="bg-primary/10 text-primary px-6 py-4 flex items-center justify-between border-b border-primary/10">
+          <h3 class="font-extrabold text-md font-heading flex items-center gap-2">
+            <.icon name="hero-shield-exclamation" class="w-6 h-6 animate-bounce" />
+            Justificación de Búsqueda Sensible
+          </h3>
+          <button phx-click="close-modal" class="btn btn-sm btn-ghost btn-circle text-primary">
+            <.icon name="hero-x-mark" class="w-5 h-5" />
+          </button>
+        </div>
+
+        <div class="p-6 space-y-5">
+          <div class="alert alert-warning text-xs shadow-sm py-3 px-4 rounded-xl flex gap-2 border border-warning/20 bg-warning/5 text-warning-content">
+            <.icon name="hero-information-circle" class="w-5 h-5 flex-shrink-0 mt-0.5" />
+            <div>
+              <h4 class="font-bold">Aviso Legal y de Auditoría</h4>
+              <p class="opacity-95">De acuerdo con la Ley de Protección de Datos Personales y las directrices de Gobernanza, toda consulta realizada sobre el historial de placas debe estar debidamente motivada. Este registro es inmutable y será auditado periódicamente.</p>
+            </div>
+          </div>
+
+          <!-- Error message inside modal -->
+          <%= if @validation_error do %>
+            <div class="alert alert-error shadow-sm text-xs rounded-xl py-2.5 px-3 flex items-start gap-1">
+              <.icon name="hero-exclamation-circle" class="w-4 h-4 mt-0.5 flex-shrink-0" />
+              <span><%= @validation_error %></span>
+            </div>
+          <% end %>
+
+          <!-- Justification Form -->
+          <form phx-submit="confirm-search" class="space-y-4">
+            <div class="form-control">
+              <label class="label">
+                <span class="label-text font-bold text-xs">Indique el Nro. de Caso, Caso Policial o Motivo Oficial de Investigación</span>
+              </label>
+              <textarea 
+                name="justification" 
+                rows="4" 
+                required
+                placeholder="Ej. Caso Policial Nro. 2026-X45, Investigación fiscal por hurto agravado..." 
+                class="textarea textarea-bordered w-full bg-base-200/50 focus:bg-base-200 focus:border-primary transition-all duration-200 text-sm"
+              ></textarea>
+              <label class="label">
+                <span class="label-text-alt opacity-60 text-[10px]">Ingrese al menos 10 caracteres explicativos.</span>
+              </label>
+            </div>
+
+            <div class="flex gap-3 justify-end pt-2 border-t border-base-content/10">
+              <button 
+                type="button" 
+                phx-click="close-modal" 
+                class="btn btn-ghost text-xs"
+              >
+                Cancelar
+              </button>
+              <button 
+                type="submit" 
+                class="btn btn-primary shadow-lg shadow-primary/20"
+              >
+                <.icon name="hero-check" class="w-4 h-4 mr-0.5" />
+                Validar y Consultar
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>

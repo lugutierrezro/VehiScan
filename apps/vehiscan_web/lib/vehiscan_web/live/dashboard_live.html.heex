@@ -1,0 +1,570 @@
+<div class="min-h-screen bg-base-300 text-base-content flex flex-col font-sans">
+  <Layouts.navigation_bar current_page={:dashboard} current_user={@current_user} />
+
+  <!-- Main Container -->
+  <div class="flex-1 p-6 space-y-6 overflow-y-auto">
+    <!-- Stat Cards Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      
+      <!-- Stats: Detections Today -->
+      <div class="card bg-base-100 border border-base-content/5 shadow-xl p-5 flex flex-row items-center gap-4 hover:shadow-primary/5 transition-all duration-300">
+        <div class="p-3 bg-info/10 text-info rounded-2xl">
+          <.icon name="hero-device-tablet" class="w-8 h-8" />
+        </div>
+        <div>
+          <p class="text-xs text-base-content/60 font-semibold uppercase tracking-wider">Lecturas Hoy</p>
+          <h3 class="text-3xl font-extrabold font-heading text-info mt-0.5"><%= @stats.alpr_events_today_count %></h3>
+        </div>
+      </div>
+
+      <!-- Stats: Critical Alerts -->
+      <div class="card bg-base-100 border border-base-content/5 shadow-xl p-5 flex flex-row items-center gap-4 hover:shadow-error/5 transition-all duration-300">
+        <div class="p-3 bg-error/10 text-error rounded-2xl relative">
+          <%= if length(@pending_alerts) > 0 do %>
+            <span class="absolute top-1.5 right-1.5 flex h-3 w-3">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-error opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-3 w-3 bg-error"></span>
+            </span>
+          <% end %>
+          <.icon name="hero-exclamation-triangle" class="w-8 h-8" />
+        </div>
+        <div>
+          <p class="text-xs text-base-content/60 font-semibold uppercase tracking-wider">Alertas Activas</p>
+          <h3 class="text-3xl font-extrabold font-heading text-error mt-0.5"><%= length(@pending_alerts) %></h3>
+        </div>
+      </div>
+
+      <!-- Stats: Watchlist Entries -->
+      <div class="card bg-base-100 border border-base-content/5 shadow-xl p-5 flex flex-row items-center gap-4 hover:shadow-warning/5 transition-all duration-300">
+        <div class="p-3 bg-warning/10 text-warning rounded-2xl">
+          <.icon name="hero-clipboard-document-list" class="w-8 h-8" />
+        </div>
+        <div>
+          <p class="text-xs text-base-content/60 font-semibold uppercase tracking-wider">Placas Vigiladas</p>
+          <h3 class="text-3xl font-extrabold font-heading text-warning mt-0.5"><%= @stats.active_watchlist_count %></h3>
+        </div>
+      </div>
+
+      <!-- Stats: Cameras Status -->
+      <div class="card bg-base-100 border border-base-content/5 shadow-xl p-5 flex flex-row items-center gap-4 hover:shadow-success/5 transition-all duration-300">
+        <div class="p-3 bg-success/10 text-success rounded-2xl">
+          <.icon name="hero-video-camera" class="w-8 h-8" />
+        </div>
+        <div>
+          <p class="text-xs text-base-content/60 font-semibold uppercase tracking-wider">Cámaras en Línea</p>
+          <h3 class="text-3xl font-extrabold font-heading text-success mt-0.5">
+            <%= @stats.active_cameras %> <span class="text-lg font-medium opacity-50">/ <%= @stats.total_cameras %></span>
+          </h3>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Main Live Operations Panel -->
+    <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-stretch">
+      
+      <!-- Left Panel: Live ALPR Feed (Cols 3) -->
+      <div class="xl:col-span-3 bg-base-100 border border-base-content/5 shadow-2xl rounded-2xl p-5 flex flex-col h-[600px]">
+        <div class="flex items-center justify-between pb-4 border-b border-base-content/10 flex-none">
+          <h3 class="font-bold text-md tracking-tight font-heading flex items-center gap-1.5">
+            <span class="inline-block w-2.5 h-2.5 rounded-full bg-success animate-pulse"></span>
+            Feed en Vivo
+          </h3>
+          <span class="badge badge-neutral text-[10px] font-bold py-1">ALPR Stream</span>
+        </div>
+        
+        <div class="flex-1 overflow-y-auto space-y-3 pt-3 pr-1">
+          <%= if @recent_events == [] do %>
+            <div class="flex flex-col items-center justify-center h-full text-base-content/40 space-y-2 py-10">
+              <.icon name="hero-device-tablet-micro" class="w-12 h-12 stroke-1" />
+              <p class="text-xs font-semibold text-center">Sin lecturas ALPR registradas</p>
+              <p class="text-[10px] opacity-70 text-center px-4">
+                Ve a <strong>Cámaras</strong>, configura una fuente de video y presiona <strong>Procesar Video</strong>.
+              </p>
+              <.link navigate="/cameras" class="btn btn-xs btn-primary mt-1">Ir a Cámaras</.link>
+            </div>
+          <% else %>
+            <%= for event <- @recent_events do %>
+              <div class="p-3 bg-base-200 border border-base-content/5 rounded-xl flex items-center gap-3 hover:border-base-content/20 transition-all duration-200">
+                <%= if crop_url = ALPREvent.get_crop_url(event) do %>
+                  <div class="w-14 h-10 rounded-lg overflow-hidden bg-base-300 border border-base-content/10 flex-shrink-0 relative group">
+                    <img src={crop_url} class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-125" alt="Crop" />
+                  </div>
+                <% else %>
+                  <div class="w-14 h-10 rounded-lg bg-base-300 border border-dashed border-base-content/20 flex items-center justify-center flex-shrink-0 text-[9px] opacity-50 text-center leading-3 font-semibold">
+                    Sin<br/>Imagen
+                  </div>
+                <% end %>
+
+                <div class="flex-1 min-w-0 space-y-0.5">
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="font-mono text-xs font-black px-1.5 py-0.5 bg-neutral text-neutral-content rounded tracking-wider"><%= event.normalized_plate %></span>
+                    <span class={"badge badge-xs text-[9px] py-1 font-bold #{if event.confidence >= 75.0, do: "badge-success", else: "badge-warning"}"}>
+                      <%= event.confidence %>%
+                    </span>
+                  </div>
+                  
+                  <!-- Vehicle attributes (class/color) -->
+                  <%
+                    class = ALPREvent.get_class(event)
+                    color = ALPREvent.get_color(event)
+                  %>
+                  <%= if class != "unknown" or color != "unknown" do %>
+                    <div class="flex items-center gap-1 text-[9px] opacity-75">
+                      <span class="badge badge-outline badge-neutral badge-xs uppercase"><%= class %></span>
+                      <span class="badge badge-outline badge-neutral badge-xs uppercase"><%= color %></span>
+                    </div>
+                  <% end %>
+
+                  <div class="text-[10px] opacity-70 flex flex-col gap-0.5">
+                    <%= if event.camera do %>
+                      <span class="flex items-center gap-1 truncate" title={"Cámara: #{event.camera.code} - #{event.camera.location_name}"}>
+                        <.icon name="hero-video-camera-micro" class="w-3 h-3 text-base-content/40" />
+                        <%= event.camera.code %> • <%= event.camera.location_name %>
+                      </span>
+                    <% else %>
+                      <span class="flex items-center gap-1 truncate text-base-content/50" title="Cámara: Desconocida">
+                        <.icon name="hero-video-camera-micro" class="w-3 h-3 text-base-content/40" />
+                        Desconocida
+                      </span>
+                    <% end %>
+                  </div>
+                </div>
+
+                <div class="text-right flex-shrink-0">
+                  <span class="text-[9px] opacity-40 font-mono"><%= Calendar.strftime(event.inserted_at, "%H:%M:%S") %></span>
+                </div>
+              </div>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Center Panel: Map (Cols 6) -->
+      <div class="xl:col-span-6 bg-base-100 border border-base-content/5 shadow-2xl rounded-2xl p-5 flex flex-col h-[600px]">
+        <div class="flex items-center justify-between pb-4 border-b border-base-content/10 flex-none">
+          <h3 class="font-bold text-md tracking-tight font-heading flex items-center gap-2">
+            <.icon name="hero-map" class="w-5 h-5 text-primary" />
+            Mapa de Monitoreo Metropolitano
+          </h3>
+          <span class="badge badge-primary badge-outline text-[10px] font-bold py-1">INTERACTIVO</span>
+        </div>
+        
+        <div class="flex-1 mt-4 rounded-xl overflow-hidden border border-base-content/10 relative shadow-inner">
+          <div 
+            id="map" 
+            phx-update="ignore" 
+            phx-hook="LeafletMap"
+            data-lat="-12.0865"
+            data-lng="-77.0042"
+            data-zoom="12"
+            data-cameras={@cameras_json}
+            class="absolute inset-0 z-0 h-full w-full"
+          ></div>
+        </div>
+      </div>
+
+      <!-- Right Panel: Alerts Queue (Cols 3) -->
+      <div class="xl:col-span-3 bg-base-100 border border-base-content/5 shadow-2xl rounded-2xl p-5 flex flex-col h-[600px]">
+        <div class="flex items-center justify-between pb-4 border-b border-base-content/10 flex-none">
+          <.link navigate={~p"/alerts"} class="font-bold text-md tracking-tight font-heading flex items-center gap-2 text-error hover:underline">
+            <.icon name="hero-bell-alert" class="w-5 h-5" />
+            Alertas Críticas &rarr;
+          </.link>
+          <span class="badge badge-error text-[10px] font-bold py-1"><%= length(@pending_alerts) %> pendientes</span>
+        </div>
+
+        <div class="flex-1 overflow-y-auto space-y-3 pt-3 pr-1">
+          <%= if @pending_alerts == [] do %>
+            <div class="flex flex-col items-center justify-center h-full text-base-content/40 space-y-2 py-10">
+              <.icon name="hero-shield-check" class="w-12 h-12 stroke-1" />
+              <p class="text-xs font-semibold">Sin alertas críticas pendientes</p>
+              <p class="text-[10px] opacity-70 text-center">Todo en orden</p>
+            </div>
+          <% else %>
+            <%= for alert <- @pending_alerts do %>
+              <div class="p-4 bg-base-200 border-l-4 border-error rounded-r-xl space-y-3 shadow-md hover:shadow-lg transition-all duration-200">
+                <div class="flex items-start justify-between gap-2">
+                  <div class="space-y-1 flex-1 min-w-0">
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                      <span class="font-mono text-sm font-black px-2 py-0.5 bg-neutral text-neutral-content rounded-md tracking-wider"><%= alert.alpr_event.normalized_plate %></span>
+                      <span class="badge badge-error badge-outline text-[9px] font-extrabold uppercase py-0.5">
+                        <%= alert.severity %>
+                      </span>
+                    </div>
+                    <p class="text-[10px] text-error font-extrabold uppercase tracking-wide flex items-center gap-1">
+                      <span class="inline-block w-1.5 h-1.5 rounded-full bg-error animate-ping"></span>
+                      COINCIDENCIA
+                    </p>
+                  </div>
+                  
+                  <%= if crop_url = ALPREvent.get_crop_url(alert.alpr_event) do %>
+                    <div class="w-14 h-9 rounded-lg overflow-hidden border border-base-content/10 shadow-sm flex-shrink-0">
+                      <img src={crop_url} class="w-full h-full object-cover" alt="Crop" />
+                    </div>
+                  <% end %>
+                </div>
+
+                <div class="text-[11px] opacity-80 space-y-1 bg-base-100/40 p-2 rounded-lg">
+                  <p class="font-medium text-base-content/90 line-clamp-2"><strong>Motivo:</strong> <%= alert.watchlist.reason %></p>
+                  <p class="truncate"><strong>Cámara:</strong> <%= alert.alpr_event.camera.code %> (<%= alert.alpr_event.camera.location_name %>)</p>
+                  <div class="flex items-center justify-between text-[9px] opacity-65 pt-1">
+                    <span><%= Calendar.strftime(alert.alpr_event.inserted_at, "%Y-%m-%d %H:%M:%S") %></span>
+                    <button 
+                      phx-click="select-alert" 
+                      phx-value-id={alert.id}
+                      class="btn btn-xs btn-error scale-95 shadow-sm"
+                    >
+                      Resolver
+                    </button>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Cámaras en Vivo Row -->
+    <div class="bg-base-100 border border-base-content/5 shadow-2xl rounded-2xl p-5">
+      <div class="flex items-center justify-between pb-4 border-b border-base-content/10">
+        <h3 class="font-bold text-md tracking-tight font-heading flex items-center gap-2">
+          <.icon name="hero-video-camera" class="w-5 h-5 text-primary animate-pulse" />
+          Módulos de Monitoreo de Video en Vivo
+        </h3>
+        <span class="badge badge-primary badge-outline text-[10px] font-bold py-1">ALPR DETECT</span>
+      </div>
+
+      <%= if Enum.all?(@cameras, &(is_nil(&1.stream_url) or &1.stream_url == "")) do %>
+        <div class="bg-base-200/50 border border-base-content/5 rounded-xl p-12 text-center text-xs opacity-60 mt-5">
+          No hay fuentes de video configuradas en las cámaras activas. Ve a Configuración para asignar fuentes.
+        </div>
+      <% else %>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-5">
+          <%= for c <- @cameras do %>
+            <%= if c.stream_url && c.stream_url != "" do %>
+              <% is_streaming = Map.has_key?(@streaming_cameras, c.id) %>
+              <div class="card bg-base-200/50 border border-base-content/5 shadow-md flex flex-col justify-between overflow-hidden group hover:shadow-lg transition-all duration-300">
+                <!-- Top bar info -->
+                <div class="p-4 bg-base-100/50 flex items-center justify-between border-b border-base-content/5">
+                  <div class="space-y-0.5">
+                    <div class="flex items-center gap-1.5">
+                      <span class="font-mono text-[10px] font-black px-1.5 py-0.5 bg-neutral text-neutral-content rounded-md tracking-wider"><%= c.code %></span>
+                      <span class={"badge badge-xs uppercase font-extrabold text-[8px] py-1 px-1.5 #{if c.status == "active", do: "badge-success text-success-content", else: "badge-ghost"}"}>
+                        <%= c.status %>
+                      </span>
+                    </div>
+                    <h4 class="font-extrabold text-xs font-heading truncate max-w-[180px] text-base-content/85"><%= c.location_name %></h4>
+                  </div>
+                  
+                  <button
+                    phx-click="toggle-stream"
+                    phx-value-id={c.id}
+                    class={"btn btn-circle btn-xs #{if is_streaming, do: "btn-error", else: "btn-primary"} shadow-sm"}
+                  >
+                    <%= if is_streaming do %>
+                      <.icon name="hero-stop" class="w-3.5 h-3.5" />
+                    <% else %>
+                      <.icon name="hero-play" class="w-3.5 h-3.5" />
+                    <% end %>
+                  </button>
+                </div>
+
+                <!-- Stream Area -->
+                <div class="relative bg-black aspect-video flex items-center justify-center overflow-hidden">
+                  <%= if is_streaming do %>
+                    <img
+                      src={"/stream/#{c.id}"}
+                      alt={"Stream en vivo - #{c.code}"}
+                      class="w-full h-full object-contain"
+                    />
+
+                    <!-- Grid Pattern Overlay -->
+                    <div class="absolute inset-0 pointer-events-none opacity-[0.06]" style="background-image: radial-gradient(circle, var(--color-success) 1px, transparent 1px); background-size: 16px 16px;"></div>
+
+                    <!-- Laser Scanner sweep -->
+                    <div class="scan-laser-line"></div>
+
+                    <!-- Target Corners -->
+                    <div class="absolute inset-0 pointer-events-none p-3 flex flex-col justify-between camera-target-corner">
+                      <div class="flex justify-between">
+                        <div class="w-3.5 h-3.5 border-t-2 border-l-2 border-success"></div>
+                        <div class="w-3.5 h-3.5 border-t-2 border-r-2 border-success"></div>
+                      </div>
+                      <div class="flex justify-between">
+                        <div class="w-3.5 h-3.5 border-b-2 border-l-2 border-success"></div>
+                        <div class="w-3.5 h-3.5 border-b-2 border-r-2 border-success"></div>
+                      </div>
+                    </div>
+
+
+
+                    <!-- Proc Overlay -->
+                    <div class="absolute top-2 left-2 flex items-center gap-1 bg-black/60 backdrop-blur-xs px-1.5 py-0.5 rounded border border-white/10 font-mono text-[8px] text-white">
+                      <span class="w-1 h-1 bg-success rounded-full animate-ping"></span>
+                      <span class="font-extrabold text-[7px]">YOLOv8</span>
+                      <span class="opacity-30">|</span>
+                      <span>OCR: ACT</span>
+                    </div>
+
+                    <div class="absolute bottom-2 right-2 flex items-center gap-1 bg-black/60 backdrop-blur-xs px-1.5 py-0.5 rounded border border-white/10 font-mono text-[8px] text-white">
+                      <span class="text-white/60">LIMA_SYS</span>
+                    </div>
+                  <% else %>
+                    <!-- Placeholder/Off Screen -->
+                    <div class="text-center p-6 space-y-2 flex flex-col items-center">
+                      <div class="w-12 h-12 rounded-xl bg-base-100 flex items-center justify-center text-base-content/30 border border-base-content/5 shadow-inner">
+                        <.icon name="hero-video-camera" class="w-6 h-6" />
+                      </div>
+                      <div>
+                        <p class="text-[11px] font-bold text-base-content/80">Canal Fuera de Línea</p>
+                        <p class="text-[9px] opacity-55 max-w-[200px]">Presione el botón de reproducción para activar el monitoreo.</p>
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
+
+                <!-- Info bar at bottom -->
+                <div class="p-3 bg-base-100/50 flex items-center justify-between text-[10px] opacity-75 border-t border-base-content/5 font-mono">
+                  <span class="truncate max-w-[140px]"><%= c.zone || "Sin Zona" %></span>
+                  <span><%= c.orientation || "N/A" %></span>
+                </div>
+              </div>
+            <% end %>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <%!-- Threat Alert Overlay --%>
+  <%= if @threat_alert do %>
+    <div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+      <div class="threat-siren-border w-full max-w-lg bg-base-950 border border-error/50 rounded-2xl shadow-[0_0_50px_rgba(239,68,68,0.4)] overflow-hidden flex flex-col justify-between animate-scale-in">
+        
+        <!-- Flashing Top Bar -->
+        <div class="threat-siren-header bg-error text-error-content px-6 py-4 flex items-center justify-between font-heading font-black tracking-wider text-sm animate-pulse-fast">
+          <span class="flex items-center gap-2">
+            <.icon name="hero-exclamation-triangle" class="w-6 h-6 animate-bounce" />
+            🚨 ¡VEHÍCULO VIGILADO DETECTADO! 🚨
+          </span>
+          <span class="badge badge-neutral text-xs font-mono px-2 py-0.5"><%= String.upcase(@threat_alert.severity) %></span>
+        </div>
+
+        <div class="p-6 space-y-6 text-center">
+          <!-- Plate large display -->
+          <div class="space-y-2">
+            <span class="text-xs opacity-60 uppercase tracking-widest font-semibold block text-base-content/70">Placa Identificada</span>
+            <div class="inline-block px-8 py-3 bg-neutral text-neutral-content rounded-2xl border-4 border-error/40 font-mono text-4xl font-extrabold tracking-widest animate-pulse-slow">
+              <%= @threat_alert.alpr_event.normalized_plate %>
+            </div>
+          </div>
+
+          <!-- Alert Context/Details -->
+          <div class="bg-base-900/60 p-4 rounded-xl border border-error/20 text-left space-y-3">
+            <div class="grid grid-cols-2 gap-3 text-xs">
+              <div>
+                <p class="opacity-50 font-semibold uppercase tracking-wider text-[10px]">Cámara de Origen</p>
+                <p class="font-extrabold text-white text-sm mt-0.5"><%= @threat_alert.alpr_event.camera.code %></p>
+              </div>
+              <div>
+                <p class="opacity-50 font-semibold uppercase tracking-wider text-[10px]">Ubicación</p>
+                <p class="font-extrabold text-white text-sm mt-0.5 truncate"><%= @threat_alert.alpr_event.location_name %></p>
+              </div>
+            </div>
+            
+            <div class="border-t border-error/10 pt-3">
+              <p class="opacity-50 font-semibold uppercase tracking-wider text-[10px] text-error">Motivo de Vigilancia / Amenaza</p>
+              <p class="font-bold text-white text-sm mt-0.5"><%= @threat_alert.watchlist.reason %></p>
+              <p class="opacity-40 text-[10px] mt-1">Origen: <%= @threat_alert.watchlist.source %></p>
+            </div>
+          </div>
+
+          <!-- Image Crop if available -->
+          <%= if crop_url = ALPREvent.get_crop_url(@threat_alert.alpr_event) do %>
+            <div class="flex justify-center">
+              <div class="w-48 h-32 rounded-xl overflow-hidden border-2 border-error/30 bg-base-900 relative shadow-inner">
+                <img src={crop_url} class="w-full h-full object-cover" alt="Vehicle Crop" />
+                <div class="absolute inset-0 border border-error/10 pointer-events-none"></div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+
+        <!-- Action Button -->
+        <div class="p-5 border-t border-error/15 bg-base-950 flex items-center justify-center gap-3">
+          <button 
+            type="button" 
+            phx-click="dismiss-threat-alert" 
+            class="btn btn-error btn-wide shadow-[0_0_20px_rgba(239,68,68,0.25)] hover:shadow-[0_0_30px_rgba(239,68,68,0.45)] transition-all duration-300 font-extrabold text-sm uppercase py-2.5"
+          >
+            Entendido / Cerrar
+          </button>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- Resolution Modal overlay -->
+  <%= if @selected_alert do %>
+    <div class="fixed inset-0 bg-base-300/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+      <div class="bg-base-100 border border-base-content/10 shadow-2xl rounded-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        
+        <!-- Header -->
+        <div class={"px-6 py-4 flex items-center justify-between border-b border-base-content/10 #{case @selected_alert.severity do "critical" -> "bg-error text-error-content animate-pulse-fast"; "high" -> "bg-error/10 text-error"; _ -> "bg-warning/10 text-warning" end}"}>
+          <h3 class="font-extrabold text-md font-heading flex items-center gap-2">
+            <.icon name="hero-exclamation-triangle" class="w-6 h-6 animate-pulse" />
+            Incidencia de Alerta ALPR - Coincidencia <%= String.upcase(@selected_alert.severity) %>
+          </h3>
+          <button phx-click="close-modal" class="btn btn-sm btn-ghost btn-circle text-current">
+            <.icon name="hero-x-mark" class="w-5 h-5" />
+          </button>
+        </div>
+
+        <div class="p-6 space-y-5">
+          <div class="grid grid-cols-1 md:grid-cols-12 gap-5">
+            
+            <!-- Left Column: Image and AI Detections (Cols 5) -->
+            <div class="md:col-span-5 space-y-4">
+              <!-- Captured Image -->
+              <div class="relative bg-neutral rounded-xl overflow-hidden aspect-video border-2 border-base-content/10 shadow-inner group">
+                <%= if crop_url = ALPREvent.get_crop_url(@selected_alert.alpr_event) do %>
+                  <img src={crop_url} class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" alt="Captured Crop" />
+                <% else %>
+                  <div class="absolute inset-0 flex flex-col items-center justify-center text-base-content/40 text-xs">
+                    <.icon name="hero-photo" class="w-8 h-8 opacity-45" />
+                    <span>Sin Imagen Capturada</span>
+                  </div>
+                <% end %>
+                <div class="absolute bottom-2 left-2 bg-black/60 px-1.5 py-0.5 rounded text-[8px] text-white font-mono uppercase font-bold tracking-wider">
+                  Recorte de Vehículo
+                </div>
+              </div>
+
+              <!-- AI Attributes Table -->
+              <div class="bg-base-200 p-3.5 rounded-xl border border-base-content/5 space-y-2 text-xs">
+                <h4 class="font-bold text-[10px] uppercase tracking-wider text-base-content/60 border-b border-base-content/10 pb-1 flex items-center gap-1">
+                  <.icon name="hero-cpu-chip" class="w-3.5 h-3.5 text-primary" />
+                  Métricas Inteligentes (AI)
+                </h4>
+                <div class="space-y-1.5 font-mono text-[11px]">
+                  <div class="flex justify-between">
+                    <span class="opacity-60">Confianza Lectura:</span>
+                    <span class="font-bold text-success"><%= @selected_alert.alpr_event.confidence %>%</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="opacity-60">Tipo Detectado:</span>
+                    <span class="font-bold uppercase"><%= ALPREvent.get_class(@selected_alert.alpr_event) %></span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="opacity-60">Color Detectado:</span>
+                    <span class="font-bold uppercase"><%= ALPREvent.get_color(@selected_alert.alpr_event) %></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Column: Alert Info & Location (Cols 7) -->
+            <div class="md:col-span-7 space-y-4">
+              <!-- Plate display -->
+              <div class="flex items-center gap-3">
+                <div class="inline-block px-4 py-1.5 bg-neutral text-neutral-content rounded-xl border-2 border-error/30 font-mono text-xl font-extrabold tracking-wider">
+                  <%= @selected_alert.alpr_event.normalized_plate %>
+                </div>
+                <div class="text-[11px] opacity-75">
+                  <p class="font-bold text-base-content/90">Incidencia Registrada</p>
+                  <p class="opacity-60"><%= Calendar.strftime(@selected_alert.alpr_event.inserted_at, "%Y-%m-%d %H:%M:%S") %></p>
+                </div>
+              </div>
+
+              <!-- Info Table -->
+              <div class="bg-base-200 p-4 rounded-xl space-y-3 border border-base-content/5 text-xs">
+                <!-- Location Details -->
+                <div class="space-y-1">
+                  <h4 class="font-bold text-[10px] uppercase tracking-wider text-base-content/60 flex items-center gap-1">
+                    <.icon name="hero-map-pin" class="w-3.5 h-3.5 text-primary" />
+                    Detalles del Punto de Captura
+                  </h4>
+                  <p class="font-semibold text-base-content/90">
+                    Cámara: <%= @selected_alert.alpr_event.camera.code %> — <%= @selected_alert.alpr_event.camera.location_name %>
+                  </p>
+                  <p class="opacity-75">
+                    Zona: <%= @selected_alert.alpr_event.camera.zone || "N/A" %> (Lat: <%= @selected_alert.alpr_event.camera.latitude %>, Lng: <%= @selected_alert.alpr_event.camera.longitude %>)
+                  </p>
+                </div>
+
+                <!-- Threat Details -->
+                <div class="border-t border-base-content/10 pt-2.5 space-y-1">
+                  <h4 class="font-bold text-[10px] uppercase tracking-wider text-error flex items-center gap-1">
+                    <.icon name="hero-shield-exclamation" class="w-3.5 h-3.5" />
+                    Ficha de Lista de Vigilancia
+                  </h4>
+                  <p class="font-extrabold text-base-content/95">
+                    Motivo: <%= @selected_alert.watchlist.reason %>
+                  </p>
+                  <div class="flex justify-between text-[11px] pt-0.5">
+                    <span><strong class="opacity-60">Origen:</strong> <%= @selected_alert.watchlist.source %></span>
+                    <span><strong class="opacity-60">F. Registro:</strong> <%= Date.to_string(@selected_alert.watchlist.inserted_at) %></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Error Message -->
+          <%= if @validation_error do %>
+            <div class="alert alert-error shadow-sm text-xs rounded-xl py-2.5 px-3 flex items-start gap-1">
+              <.icon name="hero-exclamation-circle" class="w-4 h-4 mt-0.5 flex-shrink-0" />
+              <span><%= @validation_error %></span>
+            </div>
+          <% end %>
+
+          <!-- Action Form -->
+          <form phx-submit="resolve-alert" class="space-y-4 pt-3 border-t border-base-content/10">
+            <div class="form-control">
+              <label class="label">
+                <span class="label-text font-bold text-xs text-base-content/80">Bitácora / Justificación de Resolución de Alerta</span>
+              </label>
+              <textarea 
+                name="details" 
+                rows="2" 
+                required
+                placeholder="Ingrese detalles del caso de validación o descarte (mínimo 10 caracteres)..." 
+                class="textarea textarea-bordered w-full bg-base-200/50 focus:bg-base-200 focus:border-primary transition-all duration-200 text-sm"
+              ></textarea>
+            </div>
+
+            <div class="flex gap-3 justify-end">
+              <button 
+                type="button" 
+                phx-click="close-modal" 
+                class="btn btn-ghost"
+              >
+                Cancelar
+              </button>
+              <button 
+                type="submit" 
+                name="status" 
+                value="dismissed" 
+                class="btn btn-warning"
+              >
+                Descartar Alerta
+              </button>
+              <button 
+                type="submit" 
+                name="status" 
+                value="validated" 
+                class="btn btn-success text-success-content"
+              >
+                Validar Alerta
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>

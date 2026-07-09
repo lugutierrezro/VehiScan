@@ -1,0 +1,10 @@
+# Data Catalog for Proyecto Sistema Inteligente
+
+tracked_vehicles_meta:
+  type: MemoryDataset
+
+plate_readings:
+  type: MemoryDataset
+
+reid_embeddings:
+  type: MemoryDataset

@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: vehiscan_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: VehiScan2024!
+      POSTGRES_DB: vehiscan_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build: .
+    container_name: vehiscan_web_app
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "4000:4000"
+    environment:
+      - DATABASE_HOST=db
+      - DATABASE_USER=postgres
+      - DATABASE_PASSWORD=VehiScan2024!
+      - DATABASE_DB=vehiscan_dev
+      - PORT=4000
+    volumes:
+      # Mount the project folder to enable live code reload
+      - .:/app
+      # Anonymous volumes to prevent host dependencies (compiled for host OS)
+      # from overwriting container-compiled dependencies (Linux/Docker-native)
+      - /app/_build
+      - /app/deps
+      - /app/proyecto_sistema_inteligente/.venv
+    command: /bin/sh -c "mix ecto.setup && mix phx.server"
+
+volumes:
+  postgres_data:
